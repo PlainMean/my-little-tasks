@@ -48,41 +48,45 @@ function Index() {
 
 function Login() {
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
+    setBusy(true);
+    const clean = email.trim().toLowerCase();
+    // No real security: fixed password derived from the email.
+    const password = `todo-${clean}-pw`;
+    let { error } = await supabase.auth.signInWithPassword({ email: clean, password });
+    if (error) {
+      const res = await supabase.auth.signUp({ email: clean, password });
+      error = res.error;
+    }
+    setBusy(false);
     if (error) setError(error.message);
-    else setSent(true);
   };
 
   return (
     <div className="mx-auto max-w-sm space-y-4 pt-20">
       <h1 className="text-3xl font-bold">Todos</h1>
-      {sent ? (
-        <p className="text-muted-foreground">Check {email} for a sign-in link.</p>
-      ) : (
-        <form onSubmit={submit} className="space-y-3">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="w-full rounded-md border border-input bg-background px-3 py-2"
-          />
-          <button className="w-full rounded-md bg-primary px-3 py-2 text-primary-foreground">
-            Send sign-in link
-          </button>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-        </form>
-      )}
+      <form onSubmit={submit} className="space-y-3">
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          className="w-full rounded-md border border-input bg-background px-3 py-2"
+        />
+        <button
+          disabled={busy}
+          className="w-full rounded-md bg-primary px-3 py-2 text-primary-foreground"
+        >
+          Continue
+        </button>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </form>
     </div>
   );
 }
